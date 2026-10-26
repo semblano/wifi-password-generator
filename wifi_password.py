@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate an easy-to-type Wi-Fi passphrase from randomly selected words.
+"""Generate a random Wi-Fi password, or use --dictionary for a word passphrase.
 
-Keep the selected word list beside this script. Generation works offline.
+For dictionary mode, keep the selected word list beside this script.
+Generation works offline in both modes.
 English: https://www.eff.org/files/2016/07/18/eff_large_wordlist.txt
 Brazilian Portuguese: https://github.com/thoughtworks/dadoware
 Portuguese accents are removed and duplicate spellings merged before sampling.
@@ -10,23 +11,33 @@ Portuguese accents are removed and duplicate spellings merged before sampling.
 import argparse
 from pathlib import Path
 import secrets
+import string
 import unicodedata
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    mode_options = parser.add_mutually_exclusive_group()
+    mode_options.add_argument(
+        "-d", "--dictionary", action="store_true",
+        help="generate a word-based passphrase instead of random characters",
+    )
+    mode_options.add_argument(
+        "-l", "--length", type=int,
+        help="random password length, from 16 to 63 characters (default: 24)",
+    )
     length_options = parser.add_mutually_exclusive_group()
     length_options.add_argument(
-        "-w", "--words", type=int, choices=(5, 6), default=6,
-        help="number of random words (default: 6; recommended)",
+        "-w", "--words", type=int, choices=(5, 6),
+        help="number of dictionary words (requires -d; default: 6)",
     )
     length_options.add_argument(
         "-a", "--acronym",
-        help="choose one word per initial, e.g. -a senha (case-insensitive)",
+        help="choose one word per initial, e.g. -d -a senha (case-insensitive)",
     )
     parser.add_argument(
-        "--language", choices=("en", "pt-br"), default="en",
-        help="word language (default: en)",
+        "--language", choices=("en", "pt-br"),
+        help="dictionary language (requires -d; default: en)",
     )
     parser.add_argument(
         "-min", "--min-length", type=int,
@@ -37,6 +48,20 @@ def main():
         help="maximum word length in acronym mode (default: 9)",
     )
     args = parser.parse_args()
+    if not args.dictionary:
+        if any(value is not None for value in (
+            args.words, args.acronym, args.language, args.min_length, args.max_length,
+        )):
+            parser.error("word options require -d / --dictionary")
+        length = args.length if args.length is not None else 24
+        if not 16 <= length <= 63:
+            parser.error("length must be between 16 and 63")
+        alphabet = string.ascii_letters + string.digits
+        print("".join(secrets.choice(alphabet) for _ in range(length)))
+        return
+
+    args.words = args.words if args.words is not None else 6
+    args.language = args.language if args.language is not None else "en"
     if args.min_length is not None or args.max_length is not None:
         if args.acronym is None:
             parser.error("-min and -max require -a / --acronym")

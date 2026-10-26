@@ -1,16 +1,19 @@
 # Wi-Fi Password Generator
 
-Generate random, easy-to-type Wi-Fi passphrases in English or Brazilian
-Portuguese. Designed for entering passwords on TVs, consoles, and other devices
-where switching between keyboard layouts is inconvenient.
+Generate random Wi-Fi passwords, or opt into easy-to-type dictionary passphrases
+in English or Brazilian Portuguese. Word-based passwords are useful on TVs,
+consoles, and other devices where switching keyboard layouts is inconvenient.
 
-The output contains **lowercase letters and hyphens**. Portuguese accents are
-removed, and every generated password fits within **8–63 ASCII characters**.
+By default, passwords contain **24 random uppercase/lowercase letters and digits**.
+With `--dictionary`, output contains **lowercase letters and hyphens**, with
+Portuguese accents removed. Every password fits within the Wi-Fi limit of
+**8–63 ASCII characters**.
 
 ## Features
 
 - Cryptographically secure selection with Python's `secrets` module.
-- Six random words by default, with an optional five-word mode.
+- Random alphanumeric passwords by default, with configurable length (16–63).
+- Opt-in dictionary mode: six random words, with an optional five-word mode.
 - English and Brazilian Portuguese word lists included.
 - Acronym mode: choose initials and generate one random word for each letter.
 - Optional minimum and maximum word lengths in acronym mode.
@@ -36,30 +39,49 @@ On Windows, use `py -3` instead of `python3`:
 py -3 wifi_password.py
 ```
 
-Keep `wifi_words_eff.txt` and `wifi_words_pt_br.txt` beside `wifi_password.py`.
-Only the selected language's word list is needed at runtime. Word lists are
-resolved relative to the script, so it can also be invoked from another folder.
+Random-character mode needs only `wifi_password.py`. For dictionary mode, keep
+`wifi_words_eff.txt` and `wifi_words_pt_br.txt` beside the script. Only the selected
+language's list is needed at runtime. Word lists are resolved relative to the
+script, so it can also be invoked from another folder.
 
 ## Usage
 
-### Random words
+### Random characters (default)
 
-Generate six English words:
+Generate a 24-character password from uppercase letters, lowercase letters, and
+digits, using cryptographically secure randomness:
 
 ```bash
 python3 wifi_password.py
 ```
 
+Choose a different length (16–63 characters):
+
+```bash
+python3 wifi_password.py --length 32
+```
+
+The short form is `-l 32`. Each character is selected independently from the 62
+allowed characters; no particular mix of character types is forced.
+
+### Dictionary words
+
+Use `-d` or `--dictionary` to generate six English words:
+
+```bash
+python3 wifi_password.py --dictionary
+```
+
 Generate six Brazilian Portuguese words:
 
 ```bash
-python3 wifi_password.py --language pt-br
+python3 wifi_password.py -d --language pt-br
 ```
 
 Generate five words instead:
 
 ```bash
-python3 wifi_password.py --language pt-br --words 5
+python3 wifi_password.py -d --language pt-br --words 5
 ```
 
 Each run selects new random words. Words are selected independently, so repeated
@@ -67,10 +89,10 @@ words are possible.
 
 ### Acronym mode
 
-Provide the desired initials with `-a` or `--acronym`:
+In dictionary mode, provide the desired initials with `-a` or `--acronym`:
 
 ```bash
-python3 wifi_password.py --language pt-br -a senha
+python3 wifi_password.py -d --language pt-br -a senha
 ```
 
 This produces five words whose first letters are **s-e-n-h-a**, in that order,
@@ -86,25 +108,25 @@ spaces, digits, accented letters, and punctuation are not accepted.
 Require at least four characters per word:
 
 ```bash
-python3 wifi_password.py --language pt-br -a senha -min 4
+python3 wifi_password.py -d --language pt-br -a senha -min 4
 ```
 
 Require between four and six characters per word, inclusive:
 
 ```bash
-python3 wifi_password.py --language pt-br -a senha -min 4 -max 6
+python3 wifi_password.py -d --language pt-br -a senha -min 4 -max 6
 ```
 
 Require exactly four characters per word:
 
 ```bash
-python3 wifi_password.py --language pt-br -a senha -min 4 -max 4
+python3 wifi_password.py -d --language pt-br -a senha -min 4 -max 4
 ```
 
 The equivalent long-form options are:
 
 ```bash
-python3 wifi_password.py --language pt-br --acronym senha --min-length 4 --max-length 6
+python3 wifi_password.py --dictionary --language pt-br --acronym senha --min-length 4 --max-length 6
 ```
 
 Both length flags apply **only to acronym mode**. Without them, the requested
@@ -116,11 +138,17 @@ to satisfy Wi-Fi password length limits.
 | Option | Description | Default |
 | --- | --- | --- |
 | `-h`, `--help` | Show usage and exit. | — |
-| `--language {en,pt-br}` | Select English or Brazilian Portuguese. | `en` |
-| `-w`, `--words {5,6}` | Number of words in unrestricted random mode. | `6` |
+| `-d`, `--dictionary` | Generate a word-based passphrase instead of random characters. | Disabled |
+| `-l`, `--length N` | Random-character password length, from 16 to 63; cannot be combined with `--dictionary`. | `24` |
+| `--language {en,pt-br}` | Dictionary language; requires `--dictionary`. | `en` |
+| `-w`, `--words {5,6}` | Number of words in dictionary mode. | `6` |
 | `-a`, `--acronym TEXT` | One word per supplied initial; mutually exclusive with `--words`. | Disabled |
 | `-min`, `--min-length N` | Minimum word length in acronym mode; positive integer. | `1` |
 | `-max`, `--max-length N` | Maximum word length in acronym mode; positive integer. | `9` |
+
+All word-related options (`--words`, `--acronym`, `--language`, `-min`, and `-max`)
+require `--dictionary`. To update commands from earlier versions of this script,
+add `-d` to word-based invocations.
 
 ```bash
 python3 wifi_password.py --help
@@ -132,7 +160,8 @@ produce an error on standard error and exit with code `2`.
 
 ## Wi-Fi length limits
 
-The generator includes the separating hyphens in its 8–63 character budget.
+Random-character mode accepts lengths from 16 to 63, with a default of 24.
+Dictionary mode includes separating hyphens in its 8–63 character budget.
 Dictionary words longer than nine characters are excluded.
 
 In acronym mode, each word receives an equal length budget. For an acronym of
@@ -153,6 +182,12 @@ word-length combinations that might otherwise fit.
 
 ## How selection works
 
+In random-character mode, the script selects each character independently and
+uniformly from `A–Z`, `a–z`, and `0–9` using `secrets.choice`. It does not read any
+word lists.
+
+In dictionary mode:
+
 1. Read the selected local word list.
 2. For Portuguese, remove accents using Unicode normalization (`ç` becomes `c`,
    for example).
@@ -167,6 +202,9 @@ normalization and filtering happen in memory when the script runs.
 
 ### Randomness and constraints
 
+The default 24-character password has approximately 142.9 bits of selection entropy
+(`24 × log2(62)`).
+
 Six unrestricted words from either list provide approximately 77.5 bits of
 selection entropy; five provide approximately 64.6 bits. These figures describe
 the selection space, not a guaranteed cracking time.
@@ -174,7 +212,8 @@ the selection space, not a guaranteed cracking time.
 An acronym or narrow length range reduces the candidate pool. Its strength
 depends on the available words for each position, so the unrestricted figures
 do not apply to acronym mode. Treat the acronym as known rather than an
-additional secret. Unrestricted six-word generation is the recommended default.
+additional secret. For dictionary mode, unrestricted six-word generation is
+recommended over constrained acronym generation when strength is the priority.
 
 Store generated passwords in a password manager and generate separate passwords
 for separate networks. Generation itself makes no network requests; the result
@@ -185,6 +224,8 @@ is visible in your terminal and its scrollback.
 | Problem | What to do |
 | --- | --- |
 | `python3` is not found | Install Python 3 or use `py -3` on Windows. |
+| `word options require -d / --dictionary` | Add `-d` to enable word-based generation. |
+| `length must be between 16 and 63` | Use `-l` with a value in that range. |
 | `cannot read ...` | Restore the selected word-list file beside the script. |
 | `word list is incomplete` | Restore the bundled word list. The script requires at least 7,000 eligible words before applying acronym filters. |
 | `-min and -max require -a / --acronym` | Supply an acronym, or omit the length flags. |
