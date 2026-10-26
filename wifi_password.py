@@ -9,49 +9,69 @@ Portuguese accents are removed and duplicate spellings merged before sampling.
 """
 
 import argparse
-from pathlib import Path
 import secrets
 import string
 import unicodedata
+from pathlib import Path
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode_options = parser.add_mutually_exclusive_group()
     mode_options.add_argument(
-        "-d", "--dictionary", action="store_true",
+        "-d",
+        "--dictionary",
+        action="store_true",
         help="generate a word-based passphrase instead of random characters",
     )
     mode_options.add_argument(
-        "-l", "--length", type=int,
+        "-l",
+        "--length",
+        type=int,
         help="random password length, from 16 to 63 characters (default: 24)",
     )
     length_options = parser.add_mutually_exclusive_group()
     length_options.add_argument(
-        "-w", "--words", type=int, choices=(5, 6),
+        "-w",
+        "--words",
+        type=int,
+        choices=(5, 6),
         help="number of dictionary words (requires -d; default: 6)",
     )
     length_options.add_argument(
-        "-a", "--acronym",
+        "-a",
+        "--acronym",
         help="choose one word per initial, e.g. -d -a senha (case-insensitive)",
     )
     parser.add_argument(
-        "--language", choices=("en", "pt-br"),
+        "--language",
+        choices=("en", "pt-br"),
         help="dictionary language (requires -d; default: en)",
     )
     parser.add_argument(
-        "-min", "--min-length", type=int,
+        "-min",
+        "--min-length",
+        type=int,
         help="minimum word length in acronym mode (default: 1)",
     )
     parser.add_argument(
-        "-max", "--max-length", type=int,
+        "-max",
+        "--max-length",
+        type=int,
         help="maximum word length in acronym mode (default: 9)",
     )
     args = parser.parse_args()
     if not args.dictionary:
-        if any(value is not None for value in (
-            args.words, args.acronym, args.language, args.min_length, args.max_length,
-        )):
+        if any(
+            value is not None
+            for value in (
+                args.words,
+                args.acronym,
+                args.language,
+                args.min_length,
+                args.max_length,
+            )
+        ):
             parser.error("word options require -d / --dictionary")
         length = args.length if args.length is not None else 24
         if not 16 <= length <= 63:
@@ -92,21 +112,27 @@ def main():
         if args.language == "en" and len(fields) == 2:
             candidates.append(fields[1])
         elif args.language == "pt-br" and len(fields) == 1:
-            candidates.append("".join(
-                char for char in unicodedata.normalize("NFD", fields[0])
-                if not unicodedata.combining(char)
-            ))
+            candidates.append(
+                "".join(
+                    char
+                    for char in unicodedata.normalize("NFD", fields[0])
+                    if not unicodedata.combining(char)
+                )
+            )
 
     # Deduplicate before sampling so accent removal does not bias selection.
     # Exclude punctuation and limit word length so six words plus hyphens
     # fit within the Wi-Fi passphrase limit of 63 characters.
-    words = sorted({
-        word for word in candidates
-        if word.isascii()
-        and word.isalpha()
-        and word.islower()
-        and 1 <= len(word) <= 9
-    })
+    words = sorted(
+        {
+            word
+            for word in candidates
+            if word.isascii()
+            and word.isalpha()
+            and word.islower()
+            and 1 <= len(word) <= 9
+        }
+    )
     if len(words) < 7000:
         parser.error(f"word list is incomplete; restore {word_file.name}")
 
@@ -124,7 +150,8 @@ def main():
         pools = {}
         for initial in dict.fromkeys(args.acronym):
             pools[initial] = [
-                word for word in words
+                word
+                for word in words
                 if word.startswith(initial) and min_length <= len(word) <= max_length
             ]
             if not pools[initial]:
